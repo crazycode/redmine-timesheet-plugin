@@ -6,7 +6,7 @@ class Timesheet
   #   project.name => {:logs => [time entries], :users => [users shown in logs] }
   # project.name could be the parent project name also
   attr_accessor :time_entries
-  
+
   # Array of TimeEntry ids to fetch
   attr_accessor :potential_time_entry_ids
 
@@ -17,7 +17,7 @@ class Timesheet
     :user => 'User',
     :issue => 'Issue'
   }
-  
+
   def initialize(options = { })
     self.projects = [ ]
     self.time_entries = options[:time_entries] || { }
@@ -27,9 +27,9 @@ class Timesheet
     unless options[:activities].nil?
       self.activities = options[:activities].collect { |a| a.to_i }
     else
-      self.activities =  Enumeration::get_values('ACTI').collect(&:id)
+      self.activities =  Enumeration.activities.collect(&:id)
     end
-    
+
     unless options[:users].nil?
       self.users = options[:users].collect { |u| u.to_i }
     else
@@ -41,7 +41,7 @@ class Timesheet
     else
       self.sort = :project
     end
-    
+
     self.date_from = options[:date_from] || Date.today.to_s
     self.date_to = options[:date_to] || Date.today.to_s
   end
@@ -60,7 +60,7 @@ class Timesheet
       fetch_time_entries_by_project
     end
   end
-  
+
   protected
 
   def conditions(users)
@@ -71,42 +71,42 @@ class Timesheet
       conditions = ["user_id IN (?) AND #{TimeEntry.table_name}.id IN (?)",
                     users, self.potential_time_entry_ids ]
     end
-      
+
     Redmine::Hook.call_hook(:plugin_timesheet_model_timesheet_conditions, { :timesheet => self, :conditions => conditions})
     return conditions
   end
 
   private
 
-  
+
   def time_entries_for_all_users(project)
     return project.time_entries.find(:all,
                                      :conditions => self.conditions(self.users),
                                      :include => [:activity, :user, {:issue => [:tracker, :assigned_to, :priority]}],
                                      :order => "spent_on ASC")
   end
-  
+
   def time_entries_for_current_user(project)
     return project.time_entries.find(:all,
                                      :conditions => self.conditions(User.current.id),
                                      :include => [:activity, :user, {:issue => [:tracker, :assigned_to, :priority]}],
                                      :order => "spent_on ASC")
   end
-  
+
   def issue_time_entries_for_all_users(issue)
     return issue.time_entries.find(:all,
                                    :conditions => self.conditions(self.users),
                                    :include => [:activity, :user],
                                    :order => "spent_on ASC")
   end
-  
+
   def issue_time_entries_for_current_user(issue)
     return issue.time_entries.find(:all,
                                    :conditions => self.conditions(User.current.id),
                                    :include => [:activity, :user],
                                    :order => "spent_on ASC")
   end
-  
+
   def time_entries_for_user(user)
     return TimeEntry.find(:all,
                           :conditions => self.conditions([user]),
@@ -114,7 +114,7 @@ class Timesheet
                           :order => "spent_on ASC"
                           )
   end
-  
+
   def fetch_time_entries_by_project
     self.projects.each do |project|
       logs = []
@@ -134,11 +134,11 @@ class Timesheet
       else
         # Rest can see nothing
       end
-      
+
       # Append the parent project name
       if project.parent.nil?
         unless logs.empty?
-          self.time_entries[project.name] = { :logs => logs, :users => users } 
+          self.time_entries[project.name] = { :logs => logs, :users => users }
         end
       else
         unless logs.empty?
@@ -147,7 +147,7 @@ class Timesheet
       end
     end
   end
-  
+
   def fetch_time_entries_by_user
     self.users.each do |user_id|
       logs = []
@@ -160,20 +160,20 @@ class Timesheet
       else
         # Rest can see nothing
       end
-      
+
       unless logs.empty?
         user = User.find_by_id(user_id)
         self.time_entries[user.name] = { :logs => logs }  unless user.nil?
       end
     end
   end
-  
+
   #   project => { :users => [users shown in logs],
-  #                :issues => 
+  #                :issues =>
   #                  { issue => {:logs => [time entries],
   #                    issue => {:logs => [time entries],
   #                    issue => {:logs => [time entries]}
-  #     
+  #
   def fetch_time_entries_by_issue
     self.projects.each do |project|
       logs = []
@@ -195,22 +195,22 @@ class Timesheet
 
       logs.flatten! if logs.respond_to?(:flatten!)
       logs.uniq! if logs.respond_to?(:uniq!)
-      
+
       unless logs.empty?
         users << logs.collect(&:user).uniq.sort
 
-        
+
         issues = logs.collect(&:issue).uniq
         issue_logs = { }
         issues.each do |issue|
           issue_logs[issue] = logs.find_all {|time_log| time_log.issue == issue } # TimeEntry is for this issue
         end
-        
+
         # TODO: TE without an issue
-        
+
         self.time_entries[project] = { :issues => issue_logs, :users => users}
       end
     end
   end
-  
+
 end

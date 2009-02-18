@@ -16,7 +16,7 @@ class TimesheetController < ApplicationController
     @to = Date.today.to_s
     @timesheet = Timesheet.new
     @timesheet.allowed_projects = allowed_projects
-    
+
     if @timesheet.allowed_projects.empty?
       render :action => 'no_projects'
       return
@@ -30,19 +30,19 @@ class TimesheetController < ApplicationController
       redirect_to :action => 'index'
       return
     end
-    
+
     @timesheet.allowed_projects = allowed_projects
-    
+
     if @timesheet.allowed_projects.empty?
       render :action => 'no_projects'
       return
     end
 
     if !params[:timesheet][:projects].blank?
-      @timesheet.projects = @timesheet.allowed_projects.find_all { |project| 
+      @timesheet.projects = @timesheet.allowed_projects.find_all { |project|
         params[:timesheet][:projects].include?(project.id.to_s)
       }
-    else 
+    else
       @timesheet.projects = @timesheet.allowed_projects
     end
 
@@ -71,13 +71,13 @@ class TimesheetController < ApplicationController
         end
       end
     end
-    
+
     @grand_total = @total.collect{|k,v| v}.inject{|sum,n| sum + n}
 
     send_csv and return if 'csv' == params[:export]
     render :action => 'details', :layout => false if request.xhr?
   end
-  
+
   def context_menu
     @time_entries = TimeEntry.find(:all, :conditions => ['id IN (?)', params[:ids]])
     render :layout => false
@@ -90,7 +90,7 @@ class TimesheetController < ApplicationController
 
   def get_precision
     precision = Setting.plugin_timesheet_plugin['precision']
-    
+
     if precision.blank?
       # Set precision to a high number
       @precision = 10
@@ -100,9 +100,9 @@ class TimesheetController < ApplicationController
   end
 
   def get_activities
-    @activities = Enumeration::get_values('ACTI')
+    @activities = Enumeration.activities
   end
-  
+
   def allowed_projects
     if User.current.admin?
       return Project.find(:all, :order => 'name ASC')
